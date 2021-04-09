@@ -1,0 +1,165 @@
+<html><head>
+ <title>VR Lathe bouquet + THREEjs</title>
+<style type="text/css">
+  H1{ font-size: 120%; color: green}
+</style>
+</head>
+<body>
+<h1>VR Lathe bouquet + THREEjs</h1>
+
+  <canvas id="c" width="500" height="500"></canvas>
+
+<br>VR Lathe bouquet.
+
+<ul>
+<li>Tested in Oculus Quest 2 (ThreeJS is used used).
+<li>Only one controller (the yellow small cone) yet (in the left or right hand at random).
+<li>Press "squeeze" button to move the whole model.
+<li>Use mouse to control the model on PC.
+</ul>
+
+<p><i>updated</i> &nbsp; 8 Apr 2021
+</body>
+
+<script type="module">
+
+import * as THREE from "https://threejs.org/build/three.module.js";
+import { VRButton } from 'https://threejs.org/examples/jsm/webxr/VRButton.js';
+import {flower1, makeTexture} from './lathe.js';
+
+var renderer, scene, group,  camera, cameraZ = .5, cameraY = .8; // I'm sitting on my chaør
+var controller0;
+
+var fData = {name:'rose', col:'pink', tex:'tex'};
+
+init();
+
+function init() {
+  const canvas = document.querySelector('#c');
+  renderer = new THREE.WebGLRenderer({canvas});
+  renderer.setClearColor( 0x7799ff, 1 );
+  renderer.antialias = true;
+  document.body.appendChild( VRButton.createButton( renderer ) );
+  renderer.xr.enabled = true;
+  renderer.setAnimationLoop( render );
+
+  camera = new THREE.PerspectiveCamera(30, 5/5, .1, 100);  // fov, aspect, near, far
+  camera.position.y = cameraY;
+  camera.position.z = cameraZ;
+  scene = new THREE.Scene();
+  let light = new THREE.DirectionalLight(0xFFFFFF, .2);  // color, intensity
+  light.position.set(-1, 2, 4);
+  scene.add(light);
+  light = new THREE.AmbientLight( 0xFFFFFF, .9 );
+  scene.add(light);
+
+  controller0 = renderer.xr.getController( 0 );
+  const coneGeometry = new THREE.ConeGeometry( .005, .03, 12 ); // R, h, n
+  const coneMaterial = new THREE.MeshStandardMaterial( {color: 0xffff00} );
+  const cone = new THREE.Mesh( coneGeometry, coneMaterial );
+  cone.geometry.translate( 0, -.015, 0 );
+  cone.rotateX( -.25*Math.PI );
+  controller0.add( cone );
+  scene.add( controller0 );
+
+  makeTexture();
+
+  group = new THREE.Group();
+  let scale = .1;
+  group.applyMatrix4( new THREE.Matrix4().makeScale( scale, scale, scale ) );
+  group.translateY( .5 );
+  group.translateZ( -1 );
+
+  let d = .2;
+  let mesh = flower1(fData, 1, 1.5, 2, 1.1); // age, l0, l1, theta
+  mesh.translateX(d);  group.add( mesh );
+  fData.col = 'red';
+  mesh = flower1(fData, .5, 1,   1.5, 1);  mesh.rotateY( -1. );  mesh.translateX(d);  group.add( mesh );
+  fData.col = 'red_white';
+  mesh = flower1(fData, .9, 1.2, 1.7, 1);  mesh.rotateY( -2. );  mesh.translateX(d);  group.add( mesh );
+  mesh = flower1(fData, .1, 1.2, 2,   1);  mesh.rotateY( -4. );  mesh.translateX(d);  group.add( mesh );
+  fData.col = 'yellow';
+  mesh = flower1(fData,  1, 1,   2,   1.1);  mesh.rotateY( -3. );  mesh.translateX(d);  group.add( mesh );
+  fData.col = 'white';
+  mesh = flower1(fData, .7, .9,  1.5, .9);  mesh.rotateY( -5. );  mesh.translateX(d);  group.add( mesh );
+
+  fData.name = 'tulip';  fData.col = 'red_yellow_rand';
+  mesh = flower1(fData, 1, 2., 1.5, .9, false);  mesh.rotateY( -1.5 );  mesh.translateX(d);  group.add( mesh );
+  fData.col = 'yellow_strip';
+  mesh = flower1(fData, 1, 2., 1.5, .7, false);  mesh.rotateY( -2.5 );  mesh.translateX(d);  group.add( mesh );
+  fData.col = 'yellow';
+  mesh = flower1(fData, 1, 2., 1.5, 1, false);  mesh.rotateY( -5.5 );  mesh.translateX(d);  group.add( mesh );
+  fData.col = 'red_white_rand';
+  mesh = flower1(fData, 1, 2., 1.5, .8, false);  mesh.rotateY( -3.5 );  mesh.translateX(d);  group.add( mesh );
+  fData.col = 'red_white_strip';
+  mesh = flower1(fData, 1, 2., 1.5, .8, false);  mesh.rotateY( -.5 );  mesh.translateX(d);  group.add( mesh );
+
+  scene.add( group );
+  renderer.render(scene, camera);
+
+  controller0.addEventListener( 'squeezestart', () => {
+    controller0.attach( group );
+  } );
+  controller0.addEventListener( 'squeezeend', () => {
+    scene.attach( group );
+  } );
+
+  onWindowResize();
+  window.addEventListener( 'resize', onWindowResize );
+  addMouseHandler(canvas);
+}
+
+function render() {
+  renderer.render( scene, camera );
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize( window.innerWidth, window.innerHeight );
+}
+// =======================================================   mouse controls
+var mouseDown = false,  mouseX = 0,  mouseY = 0;
+
+function onMouseMove(evt) {
+  if (!mouseDown) return;
+  evt.preventDefault();
+
+  var deltaX = evt.clientX - mouseX,
+      deltaY = evt.clientY - mouseY;
+  mouseX = evt.clientX;   mouseY = evt.clientY;
+  group.rotation.y += deltaX / 100;
+  group.rotation.x += deltaY / 100;
+  renderer.render(scene, camera);
+}
+
+function onMouseDown(evt) {
+  evt.preventDefault();
+  mouseDown = true;
+  mouseX = evt.clientX;   mouseY = evt.clientY;
+}
+
+function onMouseUp(evt) {
+  evt.preventDefault();
+  mouseDown = false;
+}
+
+function addMouseHandler(canvas) {
+  canvas.addEventListener('mousemove', onMouseMove, false);
+  canvas.addEventListener('mousedown', onMouseDown, false);
+  canvas.addEventListener('mouseup',   onMouseUp, false);
+  canvas.addEventListener('mousewheel', wheelHandler, false);
+}
+
+function wheelHandler(ev) {
+  ev.preventDefault();
+  let del = 1.03;
+  if (ev.shiftKey) del = 1.01;
+  let ds = ((ev.detail || ev.wheelDelta) > 0) ? (1 / del) : del;
+  cameraZ *= ds;
+  camera.position.z = cameraZ;
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

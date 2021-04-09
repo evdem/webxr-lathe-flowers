@@ -1,0 +1,185 @@
+<html><head>
+ <title>Procedural Lathe Flowers + ThreeJS</title>
+<style type="text/css">
+  H1{ font-size: 120%; color: green}
+</style>
+</head>
+<body>
+<h1>WebXR Animated Flowers + ThreeJS</h1>
+
+  <canvas id="c" width="500" height="500"></canvas>
+<br>
+<select id='colSelect'>
+  <option value="pink" selected>Pink
+  <option value="red">Red
+  <option value="red_yellow">Red+Yellow
+  <option value="red_white">Red+White
+  <option value="red_yellow_rand">Red+Yellow+Rand
+  <option value="red_white_rand">Red+White+Rand
+  <option value="red_yellow_strip">Red+Yellow+Strip
+  <option value="red_white_strip">Red+White+Strip
+  <option value="yellow_strip">Yellow+Strip
+  <option value="yellow">Yellow
+  <option value="white">White
+  <option value="blue">Blue
+</select>
+<select id='nameSelect'>
+  <option value="rose" selected>Rose
+  <option value="rose2">Rose2
+  <option value="daisy">Daisy
+  <option value="tulip">Tulip
+  <option value="tooth">Tooth
+  <option value="tooth2">Tooth2
+  <option value="apple">Apple
+  <option value="weed">Weed
+  <option value="lotus">Lotus*
+  <option value="lily">Lily*
+</select>
+<input type="checkbox" id="stemCheck" checked>Stem
+
+<br><i>updated</i> &nbsp; 9 Apr 2021
+</body>
+
+<script type="module">
+import * as THREE from "https://threejs.org/build/three.module.js";
+import { VRButton } from 'https://threejs.org/examples/jsm/webxr/VRButton.js';
+import {flower3, makeTexture} from './lathe.js';
+
+var fData = {name:'rose', col:'pink', stem:true};
+
+const colSelect = document.querySelector('#colSelect');
+const nameSelect = document.querySelector('#nameSelect');
+const stemCheck = document.querySelector('#stemCheck');
+
+var renderer, scene, group, camera, cameraZ = -.5, cameraY = 1.1;
+var controller0;
+var root, canvas, mesh;  // Mouse controls globals
+var request;
+
+function main(){
+  canvas = document.querySelector('#c');
+  makeTexture();
+
+  makeScene(fData);
+
+  window.addEventListener( 'resize', onWindowResize );
+  addMouseHandler(canvas);
+  colSelect.addEventListener('change', ()=>{fData.col=colSelect.value; makeScene(fData)}, false);
+  nameSelect.addEventListener('change', ()=>{fData.name=nameSelect.value; makeScene(fData)}, false);
+  stemCheck.addEventListener('change', ()=>{fData.stem=stemCheck.checked; makeScene(fData)}, false);
+}
+function makeScene(fData){
+  renderer = new THREE.WebGLRenderer({canvas});
+  renderer.setClearColor( 0x7799ff, 1 );
+  renderer.antialias = true;
+  document.body.appendChild( VRButton.createButton( renderer ) );
+  renderer.xr.enabled = true;
+  renderer.setAnimationLoop( render );
+
+  camera = new THREE.PerspectiveCamera(75, 5/5, .1, 20);  // fov, aspect, near, far
+  camera.position.y = cameraY;
+  camera.position.z = cameraZ;
+  scene = new THREE.Scene();
+  let light = new THREE.DirectionalLight(0xFFFFFF, .4);  // color, intensity
+  light.position.set(-1, 2, 4);
+  scene.add(light);
+  light = new THREE.AmbientLight( 0xFFFFFF, .9 );
+  scene.add(light);
+
+  controller0 = renderer.xr.getController( 0 );
+  const coneGeometry = new THREE.ConeGeometry( .005, .03, 12 ); // R, h, n
+  const coneMaterial = new THREE.MeshStandardMaterial( {color: 0xffff00} );
+  const cone = new THREE.Mesh( coneGeometry, coneMaterial );
+  cone.geometry.translate( 0, -.015, 0 );
+  cone.rotateX( -.25 * Math.PI );
+  controller0.add( cone );
+  scene.add( controller0 );
+
+  root = new THREE.Object3D();
+  scene.add(root);
+  if(fData.stem){
+    root.translateZ( -1.5 );  root.translateY( .7 );  root.rotateY( -1. );
+  }else{
+    root.translateZ( -1.5 );  root.translateY( 1 );   root.rotateX( .7 );
+  }
+  mesh = flower3(fData);
+  let scale = .25;
+  mesh.applyMatrix4( new THREE.Matrix4().makeScale( scale, scale, scale ) );
+  root.add( mesh );
+  onWindowResize();
+
+  controller0.addEventListener( 'squeezestart', () => {
+    controller0.attach( root );
+  } );
+  controller0.addEventListener( 'squeezeend', () => {
+    scene.attach( root );
+  } );
+}
+function render() {
+  let time = performance.now()*.001;
+  let a = .5*(1 - Math.cos(time*.4));
+  mesh.morphTargetInfluences[0] = 4*a*(1 - a);
+  mesh.morphTargetInfluences[1] = 2*a*(a - .5);
+  renderer.render( scene, camera );
+}
+
+function renderGrowth(time) {
+  time *= 0.001;  // convert time to seconds
+  let a = .5*(1 - Math.cos(time*.4));
+  mesh.morphTargetInfluences[0] = 4*a*(1 - a);
+  mesh.morphTargetInfluences[1] = 2*a*(a - .5);
+  renderer.render(scene, camera);
+  requestAnimationFrame(renderGrowth);
+}
+main();  // <<<<<<<<<<<<<<< Enter
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize( window.innerWidth, window.innerHeight );
+}
+// =======================================================   mouse controls
+var mouseDown = false,  mouseX = 0,  mouseY = 0;
+
+function onMouseMove(evt) {
+  if (!mouseDown) return;
+  evt.preventDefault();
+
+  var deltaX = evt.clientX - mouseX,
+      deltaY = evt.clientY - mouseY;
+  mouseX = evt.clientX;   mouseY = evt.clientY;
+  root.rotation.y += deltaX / 100;
+  root.rotation.x += deltaY / 100;
+  renderer.render(scene, camera);
+}
+
+function onMouseDown(evt) {
+  evt.preventDefault();
+  mouseDown = true;
+  mouseX = evt.clientX;   mouseY = evt.clientY;
+}
+
+function onMouseUp(evt) {
+  evt.preventDefault();
+  mouseDown = false;
+}
+
+function addMouseHandler(canvas) {
+  canvas.addEventListener('mousemove', onMouseMove, false);
+  canvas.addEventListener('mousedown', onMouseDown, false);
+  canvas.addEventListener('mouseup',   onMouseUp, false);
+  canvas.addEventListener('mousewheel', wheelHandler, false);
+}
+
+function wheelHandler(ev) {
+  ev.preventDefault();
+  let del = 1.03;
+  if (ev.shiftKey) del = 1.01;
+  let ds = ((ev.detail || ev.wheelDelta) > 0) ? (1 / del) : del;
+  cameraZ *= ds;
+  camera.position.z = cameraZ;
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>
