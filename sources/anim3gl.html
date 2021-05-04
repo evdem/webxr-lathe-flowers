@@ -1,11 +1,11 @@
 <html><head>
- <title>Procedural Lathe Flowers + ThreeJS</title>
+ <title>WebGL Lathe Flowers + ThreeJS</title>
 <style type="text/css">
   H1{ font-size: 120%; color: green}
 </style>
 </head>
 <body>
-<h1> &emsp; &emsp; &emsp; Animated Flowers + ThreeJS</h1>
+<h1> &emsp; &emsp; &emsp; WebGL Animated Flowers + ThreeJS</h1>
 
   <canvas id="c" width="500" height="500"></canvas>
 <br>
@@ -40,12 +40,13 @@
 <br>Procedural Lathe Flowers lib is used. Set Flower name and color.
 Use mouse to control the model.
 
-<br><i>updated</i> &nbsp; 9 Apr 2021
+<br><i>updated</i> &nbsp; 4 May 2021
 </body>
 
 <script type="module">
 import * as THREE from "https://threejs.org/build/three.module.js";
 import Stats from 'https://threejs.org/examples/jsm/libs/stats.module.js';
+import {OrbitControls} from 'https://threejs.org/examples/jsm/controls/OrbitControls.js';
 import {flower3, makeTexture} from './lathe.js';
 
 var fData = {name:'rose', col:'pink', stem:'stem'};
@@ -54,7 +55,7 @@ const colSelect = document.querySelector('#colSelect');
 const nameSelect = document.querySelector('#nameSelect');
 const stemCheck = document.querySelector('#stemCheck');
 
-var renderer, scene, root, canvas, mesh,  camera, cameraZ = 2.5;  // Mouse controls globals
+var renderer, scene, root, canvas, mesh, controls, camera, cameraZ = 2.5;
 var stats, request;
 
 function main(){
@@ -65,7 +66,6 @@ function main(){
 
   makeScene(fData);
 
-  addMouseHandler(canvas);
   colSelect.addEventListener('change', ()=>{fData.col=colSelect.value;makeScene(fData)}, false);
   nameSelect.addEventListener('change', ()=>{fData.name=nameSelect.value;makeScene(fData)}, false);
   stemCheck.addEventListener('change', ()=>{fData.stem=stemCheck.checked; makeScene(fData)}, false);
@@ -78,12 +78,12 @@ function makeScene(fData){
   camera.position.z = cameraZ;
   scene = new THREE.Scene();
 
-  let light = new THREE.DirectionalLight(0xFFFFFF, .2);  // color, intensity
-  light.position.set(-1, 2, 4);
-  scene.add(light);
+  let light = new THREE.DirectionalLight(0xFFFFFF, .3);
+  light.position.set(-10, 20, 40);
+  camera.add(light);
+  scene.add(camera);
 
-  light = new THREE.AmbientLight( 0xFFFFFF, .9 );
-  scene.add(light);
+  scene.add(new THREE.AmbientLight(0xFFFFFF, .9));
 
   root = new THREE.Object3D();
   scene.add(root);
@@ -94,6 +94,8 @@ function makeScene(fData){
   }
   mesh = flower3(fData);
   root.add( mesh );
+  controls = new OrbitControls(camera, canvas);
+
   if(!request) request = requestAnimationFrame(renderGrowth);
 }
 function renderGrowth(time) {
@@ -101,54 +103,13 @@ function renderGrowth(time) {
   let a = .5*(1 - Math.cos(time*.4));
   mesh.morphTargetInfluences[0] = 4*a*(1 - a);
   mesh.morphTargetInfluences[1] = 2*a*(a - .5);
+  controls.update();
   renderer.render(scene, camera);
   requestAnimationFrame(renderGrowth);
   stats.update();
 }
-main();  // <<<<<<<<<<<<<<< Enter
 
-// =======================================================   mouse controls
-var mouseDown = false,  mouseX = 0,  mouseY = 0;
-
-function onMouseMove(evt) {
-  if (!mouseDown) return;
-  evt.preventDefault();
-
-  var deltaX = evt.clientX - mouseX,
-      deltaY = evt.clientY - mouseY;
-  mouseX = evt.clientX;   mouseY = evt.clientY;
-  root.rotation.y += deltaX / 100;
-  root.rotation.x += deltaY / 100;
-  renderer.render(scene, camera);
-}
-
-function onMouseDown(evt) {
-  evt.preventDefault();
-  mouseDown = true;
-  mouseX = evt.clientX;   mouseY = evt.clientY;
-}
-
-function onMouseUp(evt) {
-  evt.preventDefault();
-  mouseDown = false;
-}
-
-function addMouseHandler(canvas) {
-  canvas.addEventListener('mousemove', onMouseMove, false);
-  canvas.addEventListener('mousedown', onMouseDown, false);
-  canvas.addEventListener('mouseup',   onMouseUp, false);
-  canvas.addEventListener('mousewheel', wheelHandler, false);
-}
-
-function wheelHandler(ev) {
-  ev.preventDefault();
-  let del = 1.03;
-  if (ev.shiftKey) del = 1.01;
-  let ds = ((ev.detail || ev.wheelDelta) > 0) ? (1 / del) : del;
-  cameraZ *= ds;
-  camera.position.z = cameraZ;
-  renderer.render(scene, camera);
-}
+main();
 
 </script>
 </html>
