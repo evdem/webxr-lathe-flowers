@@ -18,16 +18,17 @@
 <li>Use mouse to control the model on PC.
 </ul>
 
-<p><i>updated</i> &nbsp; 8 Apr 2021
+<p><i>updated</i> &nbsp; 6 May 2021
 </body>
 
 <script type="module">
 
 import * as THREE from "https://threejs.org/build/three.module.js";
 import { VRButton } from 'https://threejs.org/examples/jsm/webxr/VRButton.js';
+import {OrbitControls} from 'https://threejs.org/examples/jsm/controls/OrbitControls.js';
 import {flower1, makeTexture} from './lathe.js';
 
-var renderer, scene, group,  camera, cameraZ = .5, cameraY = .8; // I'm sitting on my chaør
+var renderer, scene, group,  camera, controls, modelZ = -1.5, cameraY = 1; // I'm sitting on my chaør
 var controller0;
 
 var fData = {name:'rose', col:'pink'};
@@ -44,31 +45,22 @@ function init() {
   renderer.setAnimationLoop( render );
 
   camera = new THREE.PerspectiveCamera(30, 5/5, .1, 100);  // fov, aspect, near, far
-  camera.position.y = cameraY;
-  camera.position.z = cameraZ;
+  camera.position.set(0, cameraY, 0);
   scene = new THREE.Scene();
-  let light = new THREE.DirectionalLight(0xFFFFFF, .2);  // color, intensity
-  light.position.set(-1, 2, 4);
-  scene.add(light);
-  light = new THREE.AmbientLight( 0xFFFFFF, .9 );
-  scene.add(light);
+  let light = new THREE.DirectionalLight(0xFFFFFF, .2);
+  light.position.set(-10, 20, 40);
+  camera.add(light);
+  scene.add(camera);
 
-  controller0 = renderer.xr.getController( 0 );
-  const coneGeometry = new THREE.ConeGeometry( .005, .03, 12 ); // R, h, n
-  const coneMaterial = new THREE.MeshStandardMaterial( {color: 0xffff00} );
-  const cone = new THREE.Mesh( coneGeometry, coneMaterial );
-  cone.geometry.translate( 0, -.015, 0 );
-  cone.rotateX( -.25*Math.PI );
-  controller0.add( cone );
-  scene.add( controller0 );
+  scene.add(new THREE.AmbientLight( 0xFFFFFF, .9 ));
 
   makeTexture();
 
   group = new THREE.Group();
   let scale = .1;
   group.applyMatrix4( new THREE.Matrix4().makeScale( scale, scale, scale ) );
-  group.translateY( .5 );
-  group.translateZ( -1 );
+  group.position.set(0, cameraY - .3, modelZ);
+  scene.add( group );
 
   let d = .2;
   let mesh = flower1(fData, 1, 1.5, 2, 1.1); // age, l0, l1, theta
@@ -94,22 +86,27 @@ function init() {
   fData.col = 'red_white_strip';
   mesh = flower1(fData, 1, 2., 1.5, .8, false);  mesh.rotateY( -.5 );  mesh.translateX(d);  group.add( mesh );
 
-  scene.add( group );
-  renderer.render(scene, camera);
+  controller0 = renderer.xr.getController( 0 );
+  const coneGeometry = new THREE.ConeGeometry( .005, .03, 12 ); // R, h, n
+  const coneMaterial = new THREE.MeshStandardMaterial( {color: 0xffff00} );
+  const cone = new THREE.Mesh( coneGeometry, coneMaterial );
+  cone.geometry.translate( 0, -.015, 0 );
+  cone.rotateX( -.25*Math.PI );
+  controller0.add( cone );
+  scene.add( controller0 );
+  controller0.addEventListener( 'squeezestart', () => { controller0.attach( group ); } );
+  controller0.addEventListener( 'squeezeend',   () => { scene.attach( group ); } );
 
-  controller0.addEventListener( 'squeezestart', () => {
-    controller0.attach( group );
-  } );
-  controller0.addEventListener( 'squeezeend', () => {
-    scene.attach( group );
-  } );
+  controls = new OrbitControls(camera, canvas);
+  controls.target.set(0, cameraY, modelZ);
+  controls.update();
 
   onWindowResize();
   window.addEventListener( 'resize', onWindowResize );
-  addMouseHandler(canvas);
 }
 
 function render() {
+  controls.update();
   renderer.render( scene, camera );
 }
 
@@ -117,48 +114,6 @@ function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize( window.innerWidth, window.innerHeight );
-}
-// =======================================================   mouse controls
-var mouseDown = false,  mouseX = 0,  mouseY = 0;
-
-function onMouseMove(evt) {
-  if (!mouseDown) return;
-  evt.preventDefault();
-
-  var deltaX = evt.clientX - mouseX,
-      deltaY = evt.clientY - mouseY;
-  mouseX = evt.clientX;   mouseY = evt.clientY;
-  group.rotation.y += deltaX / 100;
-  group.rotation.x += deltaY / 100;
-  renderer.render(scene, camera);
-}
-
-function onMouseDown(evt) {
-  evt.preventDefault();
-  mouseDown = true;
-  mouseX = evt.clientX;   mouseY = evt.clientY;
-}
-
-function onMouseUp(evt) {
-  evt.preventDefault();
-  mouseDown = false;
-}
-
-function addMouseHandler(canvas) {
-  canvas.addEventListener('mousemove', onMouseMove, false);
-  canvas.addEventListener('mousedown', onMouseDown, false);
-  canvas.addEventListener('mouseup',   onMouseUp, false);
-  canvas.addEventListener('mousewheel', wheelHandler, false);
-}
-
-function wheelHandler(ev) {
-  ev.preventDefault();
-  let del = 1.03;
-  if (ev.shiftKey) del = 1.01;
-  let ds = ((ev.detail || ev.wheelDelta) > 0) ? (1 / del) : del;
-  cameraZ *= ds;
-  camera.position.z = cameraZ;
-  renderer.render(scene, camera);
 }
 
 </script>
